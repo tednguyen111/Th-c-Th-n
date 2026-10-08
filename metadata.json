@@ -1,0 +1,6 @@
+{
+  "name": "Đánh Giá Món Ăn",
+  "description": "Khám phá, đánh giá 5 chiều, lập team đi ăn, bảng xếp hạng ELO và vòng quay chọn món trưa nay.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
