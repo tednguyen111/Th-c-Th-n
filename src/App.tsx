@@ -27,7 +27,7 @@ import {
 import { OptimizedImage } from './components/OptimizedImage';
 import { DonutScoreChart, formatHalfStepScore } from './components/DonutScoreChart';
 import { LeaderboardPodium } from './components/LeaderboardPodium';
-import { AdminPanel } from './components/AdminPanel';
+import { AdminPage } from './components/AdminPage';
 
 interface FoodScores {
   ngon: number;
@@ -895,7 +895,7 @@ export default function App() {
     { id: 'feedback', label: 'Feedback Món' },
     { id: 'wheel', label: 'Vòng Quay' },
     { id: 'contact', label: 'Liên Hệ' },
-    { id: 'admin', label: '⚙ Admin' },
+    { id: 'admin', label: 'Admin' },
   ];
 
   return (
@@ -2162,15 +2162,25 @@ export default function App() {
           </section>
         )}
 
-        {/* ── TAB 7: ADMIN ── */}
+        {/* ── TAB 7: ADMIN DASHBOARD ── */}
         {activeTab === 'admin' && (
-          <section className="py-8 sm:py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <AdminPanel />
-            </div>
-          </section>
+          <AdminPage
+            showToast={showToast}
+            onDataChanged={() => {
+              fetchFoods();
+              fetchTeams();
+              fetchLeaderboard(lbPeriod);
+              fetchFeedbacks();
+              fetchRecentContacts();
+              if (currentUser) {
+                restoreSession();
+              }
+            }}
+          />
         )}
       </main>
+
+      {/* ── FOOTER ── */}
       <footer className="border-t border-black/6 dark:border-white/10 py-6 bg-white/50 dark:bg-[#191D25]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-slate-400">
           <p>© {new Date().getFullYear()} Đánh Giá Món Ăn. Cẩm nang ẩm thực & kết nối bữa trưa.</p>

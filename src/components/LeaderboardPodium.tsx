@@ -38,7 +38,7 @@ export function LeaderboardPodium({
       {/* 3D Isometric Podium SVG (Gold #1, Silver #2, Bronze #3 + Crown + User Names) */}
       <div className="w-full max-w-[440px] mx-auto my-2">
         <svg
-          viewBox="0 0 460 330"
+          viewBox="0 -30 460 360"
           className="w-full h-auto select-none overflow-visible"
           role="img"
           aria-label="Bục xếp hạng Nhất Nhì Ba"
@@ -242,28 +242,56 @@ export function LeaderboardPodium({
             {/* Crown & User #1 Info Above Step */}
             {first && (
               <g transform="translate(230, 68)">
-                {/* Golden Royal Crown SVG */}
-                <g transform="translate(-20, -54)">
-                  <path
-                    d="M4 26 L8 8 L20 18 L32 8 L36 26 Z"
-                    fill="#FACC15"
-                    stroke="#B45309"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                  />
-                  <rect
-                    x="4"
-                    y="26"
-                    width="32"
-                    height="4"
-                    rx="1.5"
-                    fill="#EAB308"
-                    stroke="#B45309"
-                    strokeWidth="1.5"
-                  />
-                  <circle cx="8" cy="6" r="2.5" fill="#FDE047" stroke="#B45309" strokeWidth="1.2" />
-                  <circle cx="20" cy="4" r="3" fill="#FEF08A" stroke="#B45309" strokeWidth="1.2" />
-                  <circle cx="32" cy="6" r="2.5" fill="#FDE047" stroke="#B45309" strokeWidth="1.2" />
+                {/* Crown matching uploaded image.png, positioned higher and taller */}
+                <g transform="translate(-34, -92)">
+                  <svg
+                    width="68"
+                    height="62"
+                    viewBox="0 0 100 92"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    {/* Three floating hollow rings on the crown peaks */}
+                    <circle
+                      cx="9"
+                      cy="31"
+                      r="5.5"
+                      stroke="#BE8A43"
+                      strokeWidth="4.5"
+                    />
+                    <circle
+                      cx="49"
+                      cy="12"
+                      r="5.8"
+                      stroke="#BE8A43"
+                      strokeWidth="4.5"
+                    />
+                    <circle
+                      cx="90"
+                      cy="31"
+                      r="5.5"
+                      stroke="#BE8A43"
+                      strokeWidth="4.5"
+                    />
+
+                    {/* Main crown body with curved peaks and subtle bottom-left gap */}
+                    <path
+                      d="M23.5 68.5 L13.5 39 C26 52 39 51 49 25 C59 51 72 52 84.5 39 L74 68.5 C60 63.5 40 63.5 27.5 68"
+                      stroke="#BE8A43"
+                      strokeWidth="4.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+
+                    {/* Elliptical base ring with upper-right stylized gap */}
+                    <path
+                      d="M63.5 74.5 C52 73 36 73.5 27.5 76.5 C23.5 78 24 82.5 29 83.8 C40 85.8 59 85.8 70 83.8 C74.5 82.5 75 78 68.5 75.5"
+                      stroke="#BE8A43"
+                      strokeWidth="4.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </g>
 
                 <text

@@ -883,22 +883,260 @@ async function startServer() {
     res.json(contactsStore.slice(0, 5));
   });
 
-  app.put('/api/admin/foods/:id/scores', (req: Request, res: Response) => {
+  // ── ADMIN API ENDPOINTS ──
+  app.get('/api/admin/overview', (_req: Request, res: Response) => {
+    const allUsers = Array.from(registeredUsers).map((name) => buildUserProfile(name));
+    allUsers.sort((a, b) => b.elo - a.elo);
+    res.json({
+      foods: INITIAL_FOODS,
+      users: allUsers,
+      teams: teamsStore,
+      feedbacks: feedbacksStore,
+      contacts: contactsStore,
+      activityLogs: activityLogs.slice(0, 50),
+      pointRules: POINT_RULES,
+    });
+  });
+
+  // Admin: Create a new dish
+  app.post('/api/admin/foods', (req: Request, res: Response) => {
+    const name = String(req.body?.name || '').trim();
+    const categoryRaw = String(req.body?.category || 'pho').trim();
+    const category = (['pho', 'bun', 'com', 'mien'].includes(categoryRaw)
+      ? categoryRaw
+      : 'pho') as FoodItem['category'];
+    const description = String(req.body?.description || '').trim();
+    const price = Math.max(1000, Number(req.body?.price) || 45000);
+    const distance = Math.max(0.1, Number(req.body?.distance) || 0.5);
+    const image =
+      String(req.body?.image || '').trim() ||
+      '/src/assets/images/food_pho_bo_1791445652067.jpg';
+
+    if (!name || name.length < 2) {
+      res.status(400).json({ error: 'Tên món ăn phải có ít nhất 2 ký tự.' });
+      return;
+    }
+
+    const rawAdmin = req.body?.adminScores || {};
+    const adminScores: FoodScores = {
+      ngon: roundHalf(rawAdmin.ngon, 9),
+      bo: roundHalf(rawAdmin.bo, 8.5),
+      gia: roundHalf(rawAdmin.gia, 8.5),
+      no: roundHalf(rawAdmin.no, 9),
+      khoangcach: roundHalf(rawAdmin.khoangcach, 9),
+    };
+
+    const newFood: FoodItem = {
+      id: Date.now(),
+      name,
+      category,
+      description:
+        description ||
+        'Món ngon được Admin tuyển chọn và thẩm định trực tiếp trên hệ thống Đánh giá 360.',
+      price,
+      distance: Math.round(distance * 10) / 10,
+      image,
+      adminScores,
+      scores: { ...adminScores },
+      reviewCount: 1,
+    };
+
+    INITIAL_FOODS.unshift(newFood);
+    res.status(201).json(newFood);
+  });
+
+  // Admin: Update an existing dish & its Admin 360 scores
+  app.put('/api/admin/foods/:id', (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const food = INITIAL_FOODS.find((f) => f.id === id);
     if (!food) {
-      res.status(404).json({ error: 'Không tìm thấy món ăn.' });
+      res.status(404).json({ error: 'Không tìm thấy món ăn cần chỉnh sửa.' });
       return;
     }
-    const raw = req.body?.adminScores || {};
-    food.adminScores = {
-      ngon: roundHalf(raw.ngon),
-      bo: roundHalf(raw.bo),
-      gia: roundHalf(raw.gia),
-      no: roundHalf(raw.no),
-      khoangcach: roundHalf(raw.khoangcach),
-    };
+
+    if (req.body?.name !== undefined) {
+      const name = String(req.body.name).trim();
+      if (!name) {
+        res.status(400).json({ error: 'Tên món ăn không được để trống.' });
+        return;
+      }
+      food.name = name;
+    }
+
+    if (req.body?.category && ['pho', 'bun', 'com', 'mien'].includes(req.body.category)) {
+      food.category = req.body.category;
+    }
+    if (req.body?.description !== undefined) {
+      food.description = String(req.body.description).trim();
+    }
+    if (req.body?.price !== undefined) {
+      food.price = Math.max(1000, Number(req.body.price) || food.price);
+    }
+    if (req.body?.distance !== undefined) {
+      food.distance = Math.max(0.1, Math.round(Number(req.body.distance) * 10) / 10);
+    }
+    if (req.body?.image !== undefined && String(req.body.image).trim()) {
+      food.image = String(req.body.image).trim();
+    }
+
+    if (req.body?.adminScores) {
+      const rawAdmin = req.body.adminScores;
+      food.adminScores = {
+        ngon: roundHalf(rawAdmin.ngon, food.adminScores.ngon),
+        bo: roundHalf(rawAdmin.bo, food.adminScores.bo),
+        gia: roundHalf(rawAdmin.gia, food.adminScores.gia),
+        no: roundHalf(rawAdmin.no, food.adminScores.no),
+        khoangcach: roundHalf(rawAdmin.khoangcach, food.adminScores.khoangcach),
+      };
+    }
+
+    if (req.body?.scores) {
+      const rawComm = req.body.scores;
+      food.scores = {
+        ngon: roundHalf(rawComm.ngon, food.scores.ngon),
+        bo: roundHalf(rawComm.bo, food.scores.bo),
+        gia: roundHalf(rawComm.gia, food.scores.gia),
+        no: roundHalf(rawComm.no, food.scores.no),
+        khoangcach: roundHalf(rawComm.khoangcach, food.scores.khoangcach),
+      };
+    }
+
     res.json(food);
+  });
+
+  // Admin: Delete a dish
+  app.delete('/api/admin/foods/:id', (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const idx = INITIAL_FOODS.findIndex((f) => f.id === id);
+    if (idx === -1) {
+      res.status(404).json({ error: 'Không tìm thấy món ăn cần xóa.' });
+      return;
+    }
+    const [removed] = INITIAL_FOODS.splice(idx, 1);
+    res.json({ success: true, removed });
+  });
+
+  // Admin: Adjust user Activity Points (AP)
+  app.post('/api/admin/users/adjust-points', (req: Request, res: Response) => {
+    const userName = String(req.body?.userName || '').trim().toUpperCase();
+    const points = Number(req.body?.points);
+    const reason = String(req.body?.reason || '').trim() || 'Admin điều chỉnh điểm AP';
+
+    if (!userName || userName.length < 2) {
+      res.status(400).json({ error: 'Vui lòng chọn hoặc nhập tên thành viên hợp lệ.' });
+      return;
+    }
+    if (!Number.isFinite(points) || points === 0) {
+      res.status(400).json({ error: 'Số điểm điều chỉnh phải khác 0.' });
+      return;
+    }
+
+    registeredUsers.add(userName);
+    activityLogs.unshift({
+      id: Date.now(),
+      userName,
+      type: 'captain',
+      points,
+      description: `[Admin] ${reason}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    const updatedProfile = buildUserProfile(userName);
+    res.json({ success: true, profile: updatedProfile });
+  });
+
+  // Admin: Delete a user
+  app.delete('/api/admin/users/:name', (req: Request, res: Response) => {
+    const userName = String(req.params.name || '').trim().toUpperCase();
+    if (!registeredUsers.has(userName)) {
+      res.status(404).json({ error: 'Không tìm thấy thành viên.' });
+      return;
+    }
+    registeredUsers.delete(userName);
+    for (let i = activityLogs.length - 1; i >= 0; i--) {
+      if (activityLogs[i].userName === userName) {
+        activityLogs.splice(i, 1);
+      }
+    }
+    res.json({ success: true, userName });
+  });
+
+  // Admin: Toggle team status (open / closed)
+  app.put('/api/admin/teams/:id/toggle', (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const team = teamsStore.find((t) => t.id === id);
+    if (!team) {
+      res.status(404).json({ error: 'Không tìm thấy team.' });
+      return;
+    }
+    team.status = team.status === 'open' ? 'closed' : 'open';
+    res.json(team);
+  });
+
+  // Admin: Delete a team
+  app.delete('/api/admin/teams/:id', (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const idx = teamsStore.findIndex((t) => t.id === id);
+    if (idx === -1) {
+      res.status(404).json({ error: 'Không tìm thấy team.' });
+      return;
+    }
+    const [removed] = teamsStore.splice(idx, 1);
+    res.json({ success: true, removed });
+  });
+
+  // Admin: Delete a feedback & recalculate dish community average
+  app.delete('/api/admin/feedbacks/:id', (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const idx = feedbacksStore.findIndex((fb) => fb.id === id);
+    if (idx === -1) {
+      res.status(404).json({ error: 'Không tìm thấy feedback.' });
+      return;
+    }
+    const [removed] = feedbacksStore.splice(idx, 1);
+
+    // Recalculate community average for that food
+    const food = INITIAL_FOODS.find((f) => f.id === removed.foodId);
+    if (food) {
+      const remaining = feedbacksStore.filter((fb) => fb.foodId === food.id);
+      if (remaining.length > 0) {
+        const sum = remaining.reduce(
+          (acc, fb) => ({
+            ngon: acc.ngon + fb.scores.ngon,
+            bo: acc.bo + fb.scores.bo,
+            gia: acc.gia + fb.scores.gia,
+            no: acc.no + fb.scores.no,
+            khoangcach: acc.khoangcach + fb.scores.khoangcach,
+          }),
+          { ngon: 0, bo: 0, gia: 0, no: 0, khoangcach: 0 }
+        );
+        food.scores = {
+          ngon: roundHalf(sum.ngon / remaining.length),
+          bo: roundHalf(sum.bo / remaining.length),
+          gia: roundHalf(sum.gia / remaining.length),
+          no: roundHalf(sum.no / remaining.length),
+          khoangcach: roundHalf(sum.khoangcach / remaining.length),
+        };
+        food.reviewCount = remaining.length;
+      } else {
+        food.scores = { ...food.adminScores };
+        food.reviewCount = 1;
+      }
+    }
+
+    res.json({ success: true, removed });
+  });
+
+  // Admin: Delete a contact submission
+  app.delete('/api/admin/contacts/:id', (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const idx = contactsStore.findIndex((c) => c.id === id);
+    if (idx === -1) {
+      res.status(404).json({ error: 'Không tìm thấy liên hệ.' });
+      return;
+    }
+    const [removed] = contactsStore.splice(idx, 1);
+    res.json({ success: true, removed });
   });
 
   if (process.env.NODE_ENV !== 'production') {
